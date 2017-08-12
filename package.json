@@ -1,7 +1,7 @@
 {
-  "name": "randombookofmormonverse,
+  "name": "alexarandombookofmormonverse",
   "version": "0.0.1",
-  "description": "An Alexa skill that reads you a randome verse from the Book of Mormon,
+  "description": "An Alexa skill that reads you a random verse from the Book of Mormon",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
