@@ -48,7 +48,7 @@ alexaApp.intent("GetRandomVerse", {
   },
   function(request, response) {
     return getRandomVerse().then(function(verse) {
-      response.say(verse.reference + ' says:<break time="1s"/>' + verse.text);
+      response.say(verse.reference.replace(":", ", verse ") + ' says:<break time="1s"/>' + verse.text);
     }).catch(function(err) {
       console.log(err);
       response.say('Error getting a random verse. Try again later');
