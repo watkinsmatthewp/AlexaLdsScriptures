@@ -17,11 +17,12 @@ var chaptersByBook = [
   10  // Moroni
 ];
 
+var bookOfMormonCache = null;
+
 // SETUP
 var express = require("express"),
     alexa = require("alexa-app"),
     request = require("request"),
-    BASE_URL = 'https://api.forecast.io/forecast/' + process.env.WEATHER_API_KEY + '/38.9649734,-77.0207249', // Using coordinates of Washington DC, replace with your own or a lookup for an Alexa user's address
     PORT = process.env.PORT || 3000,
     app = express(),
     // Setup the alexa app and attach it to express before anything else.
@@ -38,17 +39,24 @@ app.set("view engine", "ejs");
 
 alexaApp.launch(function(request, response) {
   console.log("App launched");
-  response.say('Welcome to Random book of Mormon verse!<break time="1s"/>Say \"Random verse\" to get started');
+  response.shouldEndSession(false);
+  response.say('Welcome to Power in the Book<break time="1s"/>. Say \"random verse\" to hear a randomly selected verse from the Book of Mormon.');
 });
 
 // The main Weather intent - checks if a day/date was supplied or not and sends the appropriate response
 alexaApp.intent("GetRandomVerse", {
     "slots": { },
-    "utterances": [ "Random verse" ]
+    "utterances": [
+      "Random verse",
+      "Read a random verse",
+      "Read a verse",
+      "Next"
+    ]
   },
   function(request, response) {
     return getRandomVerse().then(function(verse) {
-      response.say(verse.reference.replace(":", ", verse ") + ' says:<break time="1s"/>' + verse.text);
+      response.shouldEndSession(false);
+      response.say(verse.reference.replace(":", ", verse ") + ' says:<break time="1s"/> ' + verse.text + ' <break time="1s"/>Say \"next\" to hear another verse, or \"stop\" if you\'re all done.');
     }).catch(function(err) {
       console.log(err);
       response.say('Error getting a random verse. Try again later');
@@ -76,40 +84,74 @@ alexaApp.intent("AMAZON.StopIntent", {
   }
 );
 
+alexaApp.intent("AMAZON.HelpIntent", {
+    "slots": {},
+    "utterances": []
+  }, function(request, response) {
+    console.log("Sent help response");
+    response.shouldEndSession(false);
+  	response.say("Say \"random verse\" to hear a randomly selected verse from the Book of Mormon.");
+  	return;
+  }
+);
+
 alexaApp.sessionEnded(function(request, response) {
   console.log("In sessionEnded");
   console.error('Alexa ended the session due to an error');
   // no response required
 });
 
-function getRandomVerse() {
+function getRandomVerse() {  
   return new Promise(function(resolve, reject) {
-    request({
-        url: 'https://raw.githubusercontent.com/bcbooks/scriptures-json/master/book-of-mormon.json',
-        json: true
-      }, function(err, res, body) {
-        var allChaptersCount = 0;
-        for (var i = 0; i < chaptersByBook.length; i++) {
-          allChaptersCount += chaptersByBook[i];
+    if (bookOfMormonCache) {
+      console.log('Using cache');
+      resolve(getRandomVerseFrom(bookOfMormonCache));
+    } else {
+      console.log('Downloading Book of Mormon');
+      request({
+          url: 'https://raw.githubusercontent.com/bcbooks/scriptures-json/master/book-of-mormon.json',
+          json: true
+        }, function(err, res, body) {
+          console.log('Book of Mormon downloaded');  
+          bookOfMormonCache = body;
+          resolve(getRandomVerseFrom(bookOfMormonCache));
         }
-        
-        var selectedChapterIdx = chooseRandom(allChaptersCount);
-        var selectedBookIdx = -1;
-        for (var i = 0; i < chaptersByBook.length; i++) {
-          if (chaptersByBook[i] >= selectedChapterIdx) {
-            selectedBookIdx = i;
-            break;
-          }
-          selectedChapterIdx-= chaptersByBook[i];
-        }
-      
-        var book = body.books[selectedBookIdx];      
-        var chapter = book.chapters[selectedChapterIdx];
-        resolve(chapter.verses[chooseRandom(chapter.verses.length - 1)]);
-      }
-    );
+      );
+    }
   });
 };
+
+function getRandomVerseFrom(bookOfMormon) {
+  console.log('Getting a random verse...');
+  var allChaptersCount = 0;
+  for (var i = 0; i < chaptersByBook.length; i++) {
+    allChaptersCount += chaptersByBook[i];
+  }
+
+  var selectedChapterIdx = chooseRandom(allChaptersCount);
+  var selectedBookIdx = -1;
+  for (var i = 0; i < chaptersByBook.length; i++) {
+    if (chaptersByBook[i] >= selectedChapterIdx) {
+      selectedBookIdx = i;
+      break;
+    }
+    selectedChapterIdx-= chaptersByBook[i];
+  }
+
+  console.log('Selected book idx ' + selectedBookIdx);
+  var book = bookOfMormon.books[selectedBookIdx];    
+  console.log('Selected book ' + book.book);
+  
+  console.log('Selected chapter idx ' + selectedChapterIdx);
+  var chapter = book.chapters[selectedChapterIdx];
+  
+  var verseIdx = chooseRandom(chapter.verses.length - 1);
+  console.log('Selected verse idx ' + verseIdx);
+  var verse = chapter.verses[verseIdx];
+  console.log('Selected verse text: ' + verse.text);
+  
+  return verse;
+}
 
 function chooseRandom(max) {
   return Math.floor(Math.random() * (max + 1));
