@@ -1,3 +1,3 @@
-# Alexa Random Book of Mormon Verse Skill
+# Alexa LDS Library Skill
 
-This is the web backend for the [Alexa MormonVerses skill](https://www.amazon.com/dp/B074RMFCWX). The skill is served by [Glitch](https://powerinthebook-alexa.glitch.me) and powered by NodeJs.
+This is the web backend for the LDS Library Alexa Skill

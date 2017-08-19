@@ -3,11 +3,11 @@ var request = require("request");
 var library = {};
 
 library.standardWorks = {
-  'OT': null,
-  'NT': null,
-  'BOM': null,
-  'DC': null,
-  'POGP': null
+  OT: null,
+  NT: null,
+  BOM: null,
+  DC: null,
+  POGP: null
 };
 
 library.getStandardWorkID = function(name) {
@@ -63,15 +63,47 @@ library.getStandardWork = function(standardWorkID) {
 };
 
 library.getRandomVerse = function(standardWorkID) {
-  console.log('Getting a random verse from ' + standardWorkID);
   return new Promise(function(resolve, reject) {
     library.getStandardWork(standardWorkID).then(function(standardWork) {
       var selectedVerseIndex = chooseRandom(0, standardWork.totalVerseCount - 1);
-      console.log('Selected verse index: ' + selectedVerseIndex);
       resolve(standardWork.getVerse(selectedVerseIndex));
     });
   });
 }
+
+library.referenceParseRegex = /^(\d )?(([a-z]|[A-Z]| )+)(\d+)\:((\d| |\-|\–|\,)+)/g;
+
+library.getVerses = function(refereceString) {
+  var matches = library.referenceParseRegex.exec(refereceString.trim());
+  var bookName = (matches[1] + matches[2]).trim();
+  var chapterNumber = parseInt(matches[4].trim());
+  var verseRangeGroupStrings = matches[5].split(',');
+  
+  var verseNumbers = [];
+  for (var r = 0; r < verseRangeGroupStrings.length; r++) {
+    var verseRangeGroupString = verseRangeGroupStrings[r].trim();
+    var rangePieceStrings = verseRangeGroupString.split('-');
+    var verseRangeStart = parseInt(rangePieceStrings[0].trim());
+    var verseRangeEnd = rangePieceStrings.length > 1 ? parseInt(rangePieceStrings[1].trim()) : verseRangeStart;
+    for (var v = verseRangeStart; v <= verseRangeEnd; v++) {
+      verseNumbers.push(v);
+    }
+  }
+  
+  return new Promise(function(resolve, reject) {
+    library.getStandardWork('OT').then(function(ot) {
+      library.getStandardWork('NT').then(function(nt) {
+        library.getStandardWork('BOM').then(function(bom) {
+          library.getStandardWork('DC').then(function(dc) {
+            library.getStandardWork('POGP').then(function(pogp) {
+              resolve(getVersesFrom([ot, nt, bom, dc, pogp], bookName, chapterNumber, verseNumbers));
+            });
+          });
+        });
+      });
+    });
+  });
+};
 
 module.exports = library;
 
@@ -105,7 +137,6 @@ function prepareForStorage(standardWork) {
 }
 
 function select(entities, verseIndex, newVerseIndex) {
-  console.log('Trying to find ' + verseIndex + ' from ' + entities.length + ' entities');
   var entityIndex = 0;
   for (entityIndex = 0; entityIndex < entities.length; entityIndex++) {
     if (entities[entityIndex].totalVerseCount > verseIndex) {
@@ -114,11 +145,36 @@ function select(entities, verseIndex, newVerseIndex) {
     verseIndex -= entities[entityIndex].totalVerseCount;
   }
   newVerseIndex(verseIndex);
-  console.log('Finish select with entity Idx ' + entityIndex + ', verse index ' + verseIndex);
   return entityIndex;
 }
 
 function chooseRandom(min, max) {
-  console.log('Choosing a random number between ' + min + ' and ' + max);
   return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+function getVersesFrom(standardWorks, bookName, chapterNumber, verseNumbers) {
+  var book = getBookFrom(standardWorks, bookName);
+  var chapter = book.chapters[chapterNumber - 1];
+  
+  var verses = [];
+  for (var verseNumberIdx = 0; verseNumberIdx < verseNumbers.length; verseNumberIdx++) {
+    var verseNumber = verseNumbers[verseNumberIdx];
+    verses.push(chapter.verses[verseNumber - 1]);
+  }
+  return verses;
+}
+
+function getBookFrom(standardWorks, bookName) {
+  for (var sw = 0; sw < standardWorks.length; sw++) {
+    var standardWork = standardWorks[sw];
+    for (var b = 0; b < standardWork.books.length; b++) {
+      var book = standardWork.books[b];
+      if (book.book.toLowerCase() === bookName.toLowerCase()) {
+        return book;
+      }
+    }
+  }
+  
+  console.log('Book not found');
+  return null;
 }

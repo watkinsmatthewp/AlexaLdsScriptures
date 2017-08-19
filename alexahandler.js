@@ -1,7 +1,7 @@
 var library = require('./library.js');
+var verseOfTheDay = require('./verse-of-the-day.js');
 
 var alexaHandler = {};
-
 
 // COMMON AMAZON EVENTS
 alexaHandler.registerLaunchEventHandler = function(alexaApp) {
@@ -85,6 +85,24 @@ alexaHandler.registerRandomVerseIntentHandler = function(alexaApp) {
         console.log(verse);
         response.shouldEndSession(false);
         response.say(verse.reference.replace(":", ", verse ") + ' says:<break time="1s"/> ' + verse.text + ' <break time="1s"/>. Say \"next\" to hear another verse, or \"stop\" if you\'re all done.');
+      });
+    }
+  );
+}
+
+alexaHandler.registerVerseOfTheDayIntentHandler = function(alexaApp) {
+  alexaApp.intent("VerseOfTheDay", {
+      "slots": {
+        'standardWorkID': 'StandardWorkName'
+      },
+      "utterances": [
+        'from {-|standardWorkID}'
+      ]
+    }, function(request, response) {
+      var standardWorkID = library.getStandardWorkID(request.slot('StandardWorkName'));
+      return verseOfTheDay.get(standardWorkID).then(function(verses) {
+        response.shouldEndSession(false);
+        response.say(verses[0].reference.replace(":", ", verse ") + ' says:<break time="1s"/> ' + verses[0].text + ' <break time="1s"/>. Say \"next\" to hear another verse, or \"stop\" if you\'re all done.');
       });
     }
   );
