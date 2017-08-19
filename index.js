@@ -5,7 +5,6 @@ var express = require("express"),
     PORT = process.env.PORT || 3000,
     app = express(),
     alexaHandler = require('./alexahandler.js'),
-    library = require('./library.js'),
     // Setup the alexa app and attach it to express before anything else.
     alexaApp = new alexa.app("");
 
@@ -25,6 +24,6 @@ alexaHandler.registerHelpIntentHandler(alexaApp);
 alexaHandler.registerSessionEndedEventHandler(alexaApp);
 
 alexaHandler.registerRandomVerseIntentHandler(alexaApp);
-alexaHandler.registerVerseOfTheDayIntentHandler(alexaApp);
+alexaHandler.registerScriptureOfTheDayIntentHandler(alexaApp);
 
 app.listen(PORT, () => console.log("Listening on port " + PORT + "."));

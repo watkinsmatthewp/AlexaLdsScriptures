@@ -1,5 +1,5 @@
 var library = require('./library.js');
-var verseOfTheDay = require('./verse-of-the-day.js');
+var scriptureOfTheDay = require('./scripture-of-the-day.js');
 
 var alexaHandler = {};
 
@@ -90,8 +90,8 @@ alexaHandler.registerRandomVerseIntentHandler = function(alexaApp) {
   );
 }
 
-alexaHandler.registerVerseOfTheDayIntentHandler = function(alexaApp) {
-  alexaApp.intent("VerseOfTheDay", {
+alexaHandler.registerScriptureOfTheDayIntentHandler = function(alexaApp) {
+  alexaApp.intent("ScriptureOfTheDay", {
       "slots": {
         'standardWorkID': 'StandardWorkName'
       },
@@ -99,9 +99,9 @@ alexaHandler.registerVerseOfTheDayIntentHandler = function(alexaApp) {
         'from {-|standardWorkID}'
       ]
     }, function(request, response) {
-      console.log('Processing VerseOfTheDay intent');
+      console.log('Processing ScriptureOfTheDay intent');
       var standardWorkID = library.getStandardWorkID(request.slot('StandardWorkName'));
-      return verseOfTheDay.get(standardWorkID).then(function(verses) {
+      return scriptureOfTheDay.get(standardWorkID).then(function(verses) {
         response.shouldEndSession(false);
         response.say(verses[0].reference.replace(":", ", verse ") + ' says:<break time="1s"/> ' + verses[0].text + ' <break time="1s"/>. Say \"next\" to hear another verse, or \"stop\" if you\'re all done.');
       });
