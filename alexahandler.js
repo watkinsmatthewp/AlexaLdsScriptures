@@ -113,14 +113,29 @@ alexaHandler.registerReadScriptureIntentHandler = function(alexaApp) {
   alexaApp.intent("ReadScripture", {
       "slots": {
         'bookName': 'BookName',
-        'chapterNumber': 'ChapterNumber'
+        'chapterNumber': 'ChapterNumber',
+        'startVerseNumber': 'StartVerseNumber',
+        'endVerseNumber': 'EndVerseNumber'
       },
       "utterances": []
     }, function(request, response) {
       console.log('Processing ReadScripture intent');
-      return library.getVerses(request.slot('BookName') + ' ' + request.slot('ChapterNumber')).then(function(verses) {
+      var reference = request.slot('BookName').replace('st', '').replace('nd', '').replace('rd', '').replace('th', '') + ' ' + request.slot('ChapterNumber');
+      if (request.slot('StartVerseNumber')) {
+        reference += ':' + request.slot('StartVerseNumber');
+        if (request.slot('EndVerseNumber')) {
+          reference += '-' + request.slot('EndVerseNumber');
+        }
+      }
+      return library.getVerses(reference).then(function(verses) {
         response.shouldEndSession(false);
-        response.say(verses[0].reference.replace(":", ", verse ") + ' says:<break time="1s"/> ' + verses[0].text + ' <break time="1s"/>. Say \"next\" to hear another verse, or \"stop\" if you\'re all done.');
+        var text = '';
+        for (var verseIdx = 0; verseIdx < verses.length; verseIdx++) {
+          text += (verseIdx == 0 ? verses[0].reference.replace(":", ", verse ") : 'verse ' + (verseIdx + 1));
+          text += '<break time="1s"/>';
+          text += verses[verseIdx].text;
+        }
+        response.say(text);
       });
     }
   );
