@@ -71,11 +71,12 @@ library.getRandomVerse = function(standardWorkID) {
   });
 }
 
-library.referenceParseRegex = /^(\d )?(([a-z]|[A-Z]| )+)(\d+)\:((\d| |\-|\–|\,)+)/;
+library.referenceParseRegex = /^(\d )?(([a-z]|[A-Z]| )+)(\d+)(\:((\d| |\-|\–|\,)+))?/;
 
 library.getVerses = function(referenceString) {
   console.log('Looking up ' + referenceString);
   var matches = library.referenceParseRegex.exec(referenceString.trim());
+  console.log('Regex matches: ' + matches);
   var bookName = '';
   if (matches[1]) {
     bookName += matches[1].trim();
@@ -87,16 +88,17 @@ library.getVerses = function(referenceString) {
     bookName += matches[2].trim();
   }
   var chapterNumber = parseInt(matches[4].trim());
-  var verseRangeGroupStrings = matches[5].split(',');
-  
   var verseNumbers = [];
-  for (var r = 0; r < verseRangeGroupStrings.length; r++) {
-    var verseRangeGroupString = verseRangeGroupStrings[r].trim();
-    var rangePieceStrings = verseRangeGroupString.split('-');
-    var verseRangeStart = parseInt(rangePieceStrings[0].trim());
-    var verseRangeEnd = rangePieceStrings.length > 1 ? parseInt(rangePieceStrings[1].trim()) : verseRangeStart;
-    for (var v = verseRangeStart; v <= verseRangeEnd; v++) {
-      verseNumbers.push(v);
+  if (matches[6] && matches[6].trim().length) {
+    var verseRangeGroupStrings = matches[6].trim().split(',');
+    for (var r = 0; r < verseRangeGroupStrings.length; r++) {
+      var verseRangeGroupString = verseRangeGroupStrings[r].trim();
+      var rangePieceStrings = verseRangeGroupString.split('-');
+      var verseRangeStart = parseInt(rangePieceStrings[0].trim());
+      var verseRangeEnd = rangePieceStrings.length > 1 ? parseInt(rangePieceStrings[1].trim()) : verseRangeStart;
+      for (var v = verseRangeStart; v <= verseRangeEnd; v++) {
+        verseNumbers.push(v);
+      }
     }
   }
   
@@ -168,9 +170,13 @@ function getVersesFrom(standardWorks, bookName, chapterNumber, verseNumbers) {
   var chapter = book.chapters[chapterNumber - 1];
   
   var verses = [];
-  for (var verseNumberIdx = 0; verseNumberIdx < verseNumbers.length; verseNumberIdx++) {
-    var verseNumber = verseNumbers[verseNumberIdx];
-    verses.push(chapter.verses[verseNumber - 1]);
+  if (verseNumbers.length) {
+    for (var verseNumberIdx = 0; verseNumberIdx < verseNumbers.length; verseNumberIdx++) {
+      var verseNumber = verseNumbers[verseNumberIdx];
+      verses.push(chapter.verses[verseNumber - 1]);
+    }
+  } else {
+    verses = chapter.verses;
   }
   return verses;
 }

@@ -109,6 +109,23 @@ alexaHandler.registerScriptureOfTheDayIntentHandler = function(alexaApp) {
   );
 }
 
+alexaHandler.registerReadScriptureIntentHandler = function(alexaApp) {
+  alexaApp.intent("ReadScripture", {
+      "slots": {
+        'bookName': 'BookName',
+        'chapterNumber': 'ChapterNumber'
+      },
+      "utterances": []
+    }, function(request, response) {
+      console.log('Processing ReadScripture intent');
+      return library.getVerses(request.slot('BookName') + ' ' + request.slot('ChapterNumber')).then(function(verses) {
+        response.shouldEndSession(false);
+        response.say(verses[0].reference.replace(":", ", verse ") + ' says:<break time="1s"/> ' + verses[0].text + ' <break time="1s"/>. Say \"next\" to hear another verse, or \"stop\" if you\'re all done.');
+      });
+    }
+  );
+}
+
 module.exports = alexaHandler;
 
 function read(verse) {

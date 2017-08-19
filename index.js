@@ -25,5 +25,6 @@ alexaHandler.registerSessionEndedEventHandler(alexaApp);
 
 alexaHandler.registerRandomVerseIntentHandler(alexaApp);
 alexaHandler.registerScriptureOfTheDayIntentHandler(alexaApp);
+alexaHandler.registerReadScriptureIntentHandler(alexaApp);
 
 app.listen(PORT, () => console.log("Listening on port " + PORT + "."));
