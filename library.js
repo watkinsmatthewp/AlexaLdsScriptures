@@ -71,7 +71,7 @@ library.getRandomVerse = function(standardWorkID) {
   });
 }
 
-library.referenceParseRegex = /^(\d )?(([a-z]|[A-Z]| )+)(\d+)\:((\d| |\-|\–|\,)+)/g;
+library.referenceParseRegex = /^(\d )?(([a-z]|[A-Z]| )+)(\d+)\:((\d| |\-|\–|\,)+)/;
 
 library.getVerses = function(referenceString) {
   console.log('Looking up ' + referenceString);
