@@ -30,14 +30,21 @@ verseOfTheDay.BOM = [
   'Moroni 10:4–5'
 ];
 
-verseOfTheDay.NT = [];
-verseOfTheDay.OT = [];
+verseOfTheDay.NT = [
+  'Matthew 5:14-16'
+];
+verseOfTheDay.OT = [
+  'Genesis 1:26-27'
+];
 verseOfTheDay.DC = [];
-verseOfTheDay.POGP = [];
 
 verseOfTheDay.get = function(standardWorkID) {
-  var standardWorkID = standardWorkID || 'BOM';
-  var reference = verseOfTheDay[standardWorkID][0];
+  var dayOfYear = getDayOfYear();
+  console.log('Day of year: ' + dayOfYear);
+  var standardWorkID = standardWorkID || getDefaultStandardWorkID(dayOfYear);
+  console.log('Selected standard work: ' + standardWorkID);
+  var availableReferences = verseOfTheDay[standardWorkID];
+  var reference = availableReferences[dayOfYear % availableReferences.length];
   return new Promise(function(resolve, reject) {
     library.getVerses(reference).then(function(verses) {
       resolve(verses);
@@ -46,3 +53,22 @@ verseOfTheDay.get = function(standardWorkID) {
 }
 
 module.exports = verseOfTheDay;
+
+function getDayOfYear() {
+  var now = new Date();
+  var start = new Date(now.getFullYear(), 0, 0);
+  var diff = now - start;
+  var oneDay = 1000 * 60 * 60 * 24;
+  return Math.floor(diff / oneDay);
+}
+
+function getDefaultStandardWorkID(dayOfYear) {
+  var idx = dayOfYear % 3;
+  switch (idx) {
+    case 0: return 'OT';
+    case 1: return 'NT';
+    case 2: return 'BOM';
+    // case 3: return 'DC';
+    default: throw 'Unrecognized';
+  }
+}
