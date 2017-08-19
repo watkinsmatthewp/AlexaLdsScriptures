@@ -73,9 +73,19 @@ library.getRandomVerse = function(standardWorkID) {
 
 library.referenceParseRegex = /^(\d )?(([a-z]|[A-Z]| )+)(\d+)\:((\d| |\-|\–|\,)+)/g;
 
-library.getVerses = function(refereceString) {
-  var matches = library.referenceParseRegex.exec(refereceString.trim());
-  var bookName = (matches[1] + matches[2]).trim();
+library.getVerses = function(referenceString) {
+  console.log('Looking up ' + referenceString);
+  var matches = library.referenceParseRegex.exec(referenceString.trim());
+  var bookName = '';
+  if (matches[1]) {
+    bookName += matches[1].trim();
+  }
+  if (matches[2]) {
+    if (bookName.length) {
+      bookName += ' ';
+    }
+    bookName += matches[2].trim();
+  }
   var chapterNumber = parseInt(matches[4].trim());
   var verseRangeGroupStrings = matches[5].split(',');
   
@@ -109,6 +119,7 @@ module.exports = library;
 
 function prepareForStorage(standardWork) {
   if (!standardWork.books) {
+    standardWork.book = standardWork.title;
     standardWork = { books: [ standardWork ] };
   }
   standardWork.totalVerseCount = 0;
@@ -165,6 +176,7 @@ function getVersesFrom(standardWorks, bookName, chapterNumber, verseNumbers) {
 }
 
 function getBookFrom(standardWorks, bookName) {
+  console.log('Looking for book ' + bookName);
   for (var sw = 0; sw < standardWorks.length; sw++) {
     var standardWork = standardWorks[sw];
     for (var b = 0; b < standardWork.books.length; b++) {
@@ -175,6 +187,6 @@ function getBookFrom(standardWorks, bookName) {
     }
   }
   
-  console.log('Book not found');
+  console.log('Book ' + bookName + ' not found');
   return null;
 }

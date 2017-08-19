@@ -99,6 +99,7 @@ alexaHandler.registerVerseOfTheDayIntentHandler = function(alexaApp) {
         'from {-|standardWorkID}'
       ]
     }, function(request, response) {
+      console.log('Processing VerseOfTheDay intent');
       var standardWorkID = library.getStandardWorkID(request.slot('StandardWorkName'));
       return verseOfTheDay.get(standardWorkID).then(function(verses) {
         response.shouldEndSession(false);
