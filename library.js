@@ -2,12 +2,49 @@ var request = require("request");
 
 var library = {};
 
-library.standardWorks = {
-  OT: null,
-  NT: null,
-  BOM: null,
-  DC: null,
-  POGP: null
+library.standardWorks = [];
+
+library.downloadStandardWorkJSON = function(resourceName) {
+  var resourceURL = 'https://raw.githubusercontent.com/bcbooks/scriptures-json/master/' + resourceName + '.json';
+  console.log('Downloading ' + resourceURL);
+  return new Promise(function(resolve, reject) {
+    request({ url: resourceURL, json: true }, function(err, response, body) {
+      resolve(body);
+    });
+  });
+};
+
+library.load = function() {
+  return new Promise(function(resolve, reject) {
+    library.downloadStandardWorkJSON('old-testament').then(function(otJSON) {
+      library.standardWorks.OT = {
+        names: [ 'Old Testament' ],
+        books: otJSON.books
+      };
+      library.downloadStandardWorkJSON('new-testament').then(function(ntJSON) {
+        library.standardWorks.NT = {
+          names: [ 'New Testament' ],
+          books: ntJSON.books
+        };
+        library.downloadStandardWorkJSON('book-of-mormon').then(function(bomJSON) {
+          library.standardWorks.BOM = {
+            names: [ 'Book of Mormon' ],
+            books: bomJSON.books
+          };
+          library.downloadStandardWorkJSON('doctrine-and-covenants').then(function(dcJSON) {
+            library.standardWorks.DC = {
+              names: [ 'Doctrine and Covenants', 'Doctrine & Covenants', 'D&C' ],
+              books: [{
+                book: 'D&C',
+                chapters: dcJSON.sections
+              }]
+            };
+            resolve();
+          });
+        });
+      });
+    });
+  });
 };
 
 library.getStandardWorkID = function(name) {
@@ -18,6 +55,7 @@ library.getStandardWorkID = function(name) {
     case 'old testament': return 'OT';
     case 'new testament': return 'NT';
     case 'book of mormon': return 'BOM';
+    case 'd&c':
     case 'doctrine and covenants':
     case 'doctrine & covenants': return 'DC';
     case 'pearl of great price': return 'POGP';
@@ -35,19 +73,6 @@ library.getStandardWorkResourceName = function(standardWorkID) {
     default: throw 'Unrecognized ID ' + standardWorkID;
   }
 }
-
-library.downloadStandardWork = function(standardWorkID) {
-  var resourceName = library.getStandardWorkResourceName(standardWorkID);
-  var resourceURL = 'https://raw.githubusercontent.com/bcbooks/scriptures-json/master/' + resourceName + '.json';
-  console.log('Downloading ' + resourceURL);
-  return new Promise(function(resolve, reject) {
-    request({ url: resourceURL, json: true }, function(err, response, standardWork) {
-      console.log('Downloaded ' + resourceURL);
-      standardWork = prepareForStorage(standardWork);
-      resolve(standardWork);
-    });
-  });
-};
 
 library.getStandardWork = function(standardWorkID) {
   return new Promise(function(resolve, reject) {
@@ -71,12 +96,13 @@ library.getRandomVerse = function(standardWorkID) {
   });
 }
 
-library.referenceParseRegex = /^(\d )?(([a-z]|[A-Z]| )+)(\d+)(\:((\d| |\-|\–|\,)+))?/;
+library.referenceParseRegex = /^(\d )?(([a-z]|[A-Z]| |\&)+)(\d+)(\:((\d| |\-|\–|\,)+))?/;
 
 library.getVerses = function(referenceString) {
-  console.log('Looking up ' + referenceString);
+  console.log('Looking up reference ' + referenceString);
   var matches = library.referenceParseRegex.exec(referenceString.trim());
-  console.log('Regex matches: ' + matches);
+
+  // Parse book name
   var bookName = '';
   if (matches[1]) {
     bookName += matches[1].trim();
@@ -87,7 +113,11 @@ library.getVerses = function(referenceString) {
     }
     bookName += matches[2].trim();
   }
+  
+  // Parse chapter number
   var chapterNumber = parseInt(matches[4].trim());
+  
+  // Parse verse numbers
   var verseNumbers = [];
   if (matches[6] && matches[6].trim().length) {
     var verseRangeGroupStrings = matches[6].trim().split(',');
@@ -102,19 +132,12 @@ library.getVerses = function(referenceString) {
     }
   }
   
-  return new Promise(function(resolve, reject) {
-    library.getStandardWork('OT').then(function(ot) {
-      library.getStandardWork('NT').then(function(nt) {
-        library.getStandardWork('BOM').then(function(bom) {
-          library.getStandardWork('DC').then(function(dc) {
-            library.getStandardWork('POGP').then(function(pogp) {
-              resolve(getVersesFrom([ot, nt, bom, dc, pogp], bookName, chapterNumber, verseNumbers));
-            });
-          });
-        });
-      });
-    });
-  });
+  return getVersesFrom([
+    library.standardWorks.OT,
+    library.standardWorks.NT,
+    library.standardWorks.DC,
+    library.standardWorks.BOM
+  ], bookName, chapterNumber, verseNumbers);
 };
 
 module.exports = library;
@@ -182,7 +205,6 @@ function getVersesFrom(standardWorks, bookName, chapterNumber, verseNumbers) {
 }
 
 function getBookFrom(standardWorks, bookName) {
-  console.log('Looking for book ' + bookName);
   for (var sw = 0; sw < standardWorks.length; sw++) {
     var standardWork = standardWorks[sw];
     for (var b = 0; b < standardWork.books.length; b++) {
