@@ -17,29 +17,54 @@ library.downloadStandardWorkJSON = function(resourceName) {
 library.load = function() {
   return new Promise(function(resolve, reject) {
     library.downloadStandardWorkJSON('old-testament').then(function(otJSON) {
-      library.standardWorks.OT = {
+      library.standardWorks.push(prepareForStorage({
+        id: 'OT',
         names: [ 'Old Testament' ],
         books: otJSON.books
-      };
+      }));
       library.downloadStandardWorkJSON('new-testament').then(function(ntJSON) {
-        library.standardWorks.NT = {
+        library.standardWorks.push({
+          id: 'NT',
           names: [ 'New Testament' ],
           books: ntJSON.books
-        };
+        });
         library.downloadStandardWorkJSON('book-of-mormon').then(function(bomJSON) {
-          library.standardWorks.BOM = {
+          library.standardWorks.push({
+            id: 'BOM',
             names: [ 'Book of Mormon' ],
             books: bomJSON.books
-          };
+          });
           library.downloadStandardWorkJSON('doctrine-and-covenants').then(function(dcJSON) {
-            library.standardWorks.DC = {
+            library.standardWorks.push({
+              id: 'DC',
               names: [ 'Doctrine and Covenants', 'Doctrine & Covenants', 'D&C' ],
               books: [{
                 book: 'D&C',
                 chapters: dcJSON.sections
               }]
-            };
-            resolve();
+            });
+            library.downloadStandardWorkJSON('pearl-of-great-price').then(function(pogpJSON) {
+              for (var b = 0; b < pogpJSON.books.length; b++) {
+                var book = pogpJSON.books[b];
+                switch (book.book) {
+                  case 'Moses':
+                  case 'Abraham':
+                    library.getStandardWork('OT').books.push(book);
+                    break;
+                  case 'Joseph Smith—Matthew':
+                    library.getStandardWork('NT').books.push(book);
+                    break;
+                  default:
+                    library.getStandardWork('DC').books.push(book);
+                    break;
+                }
+              }
+              
+              for (var i = 0; i < library.standardWorks.length; i++) {
+                library.standardWorks[i] = prepareForStorage(library.standardWorks[i]);
+              }
+              resolve();
+            });
           });
         });
       });
@@ -47,20 +72,29 @@ library.load = function() {
   });
 };
 
-library.getStandardWorkID = function(name) {
-  if (!name) {
+library.getStandardWorkID = function(name, nullIfNotFound, randomIfNotFound) {
+  var standardWorkID = null;
+  if (name) {
+    switch (name.toLowerCase().trim()) {
+      case 'old testament': standardWorkID = 'OT'; break;
+      case 'new testament': standardWorkID = 'NT'; break;
+      case 'book of mormon': standardWorkID = 'BOM'; break;
+      case 'd&c':
+      case 'doctrine and covenants':
+      case 'doctrine & covenants': standardWorkID = 'DC'; break;
+      default: break;
+    }
+  }
+  if (standardWorkID) {
+    return standardWorkID;
+  }
+  if (nullIfNotFound) {
     return null;
   }
-  switch (name.toLowerCase().trim()) {
-    case 'old testament': return 'OT';
-    case 'new testament': return 'NT';
-    case 'book of mormon': return 'BOM';
-    case 'd&c':
-    case 'doctrine and covenants':
-    case 'doctrine & covenants': return 'DC';
-    case 'pearl of great price': return 'POGP';
-    default: throw 'Unrecognized name: ' + name;
+  if (randomIfNotFound) {
+    return library.standardWorks[chooseRandom(0, library.standardWorks.length - 1)].id;
   }
+  throw 'Unrecognized standard work name ' + name;
 };
 
 library.getStandardWorkResourceName = function(standardWorkID) {
@@ -75,25 +109,18 @@ library.getStandardWorkResourceName = function(standardWorkID) {
 }
 
 library.getStandardWork = function(standardWorkID) {
-  return new Promise(function(resolve, reject) {
-    if (library.standardWorks[standardWorkID]) {
-      resolve(library.standardWorks[standardWorkID]);
-    } else {
-      library.downloadStandardWork(standardWorkID).then(function(standardWork) {
-        library.standardWorks[standardWorkID] = standardWork;
-        resolve(library.standardWorks[standardWorkID]);
-      });
+  for (var i = 0; i < library.standardWorks.length; i++) {
+    if (library.standardWorks[i].id === standardWorkID) {
+      return library.standardWorks[i];
     }
-  });
+  }
+  throw 'Standard work ' + standardWorkID + ' not found';
 };
 
 library.getRandomVerse = function(standardWorkID) {
-  return new Promise(function(resolve, reject) {
-    library.getStandardWork(standardWorkID).then(function(standardWork) {
-      var selectedVerseIndex = chooseRandom(0, standardWork.totalVerseCount - 1);
-      resolve(standardWork.getVerse(selectedVerseIndex));
-    });
-  });
+  var standardWork = library.getStandardWork(standardWorkID);
+  var selectedVerseIndex = chooseRandom(0, standardWork.totalVerseCount - 1);
+  return standardWork.getVerse(selectedVerseIndex);
 }
 
 library.referenceParseRegex = /^(\d )?(([a-z]|[A-Z]| |\&)+)(\d+)(\:((\d| |\-|\–|\,)+))?/;
@@ -132,25 +159,15 @@ library.getVerses = function(referenceString) {
     }
   }
   
-  return getVersesFrom([
-    library.standardWorks.OT,
-    library.standardWorks.NT,
-    library.standardWorks.DC,
-    library.standardWorks.BOM
-  ], bookName, chapterNumber, verseNumbers);
+  return getVersesFrom(library.standardWorks, bookName, chapterNumber, verseNumbers);
 };
 
 module.exports = library;
 
 function prepareForStorage(standardWork) {
-  if (!standardWork.books) {
-    standardWork.book = standardWork.title;
-    standardWork = { books: [ standardWork ] };
-  }
   standardWork.totalVerseCount = 0;
   for (var b = 0; b < standardWork.books.length; b++) {
     var book = standardWork.books[b];
-    book.chapters = book.chapters || book.sections;
     book.totalVerseCount = 0;
     for (var c = 0; c < book.chapters.length; c++) {
       var chapter = book.chapters[c];

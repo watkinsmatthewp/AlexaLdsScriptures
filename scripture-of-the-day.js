@@ -85,6 +85,7 @@ verseOfTheDay.OT = [
   'Malachi 3:8-10',
   'Malachi 4:5-6'
 ];
+
 verseOfTheDay.DC = [
   'Joseph Smith—History 1:15-20',
   'D&C 1:37-38',

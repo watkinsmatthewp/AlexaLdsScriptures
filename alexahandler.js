@@ -1,5 +1,7 @@
 var alexaHandler = {};
 
+alexaHandler.helpText = 'Say what passage you want to read, say \"scripture of the day,\" or say \"surprise me.\"';
+
 alexaHandler.library = null;
 alexaHandler.scriptureOfTheDay = null;
 
@@ -8,7 +10,7 @@ alexaHandler.registerLaunchEventHandler = function(alexaApp) {
   alexaApp.launch(function(request, response) {
     console.log("App launched");
     response.shouldEndSession(false);
-    response.say('Hello. App launched');
+    response.say('Hello. Welcome to L. D. S. Library.<break time="1s"/>' + alexaHandler.helpText);
   });
 };
 
@@ -30,7 +32,7 @@ alexaHandler.registerStopIntentHandler = function(alexaApp) {
       "utterances": []
     }, function(request, response) {
       console.log("Sent stop response");
-      response.say("Alright, I'll stop");
+      response.say("Alright, goodbye.");
       return;
     }
   );
@@ -43,7 +45,7 @@ alexaHandler.registerHelpIntentHandler = function(alexaApp) {
     }, function(request, response) {
       console.log("Sent help response");
       response.shouldEndSession(false);
-      response.say("Say \"random verse\" to hear a randomly selected verse from the Book of Mormon.");
+      response.say(alexaHandler.helpText);
       return;
     }
   );
@@ -58,19 +60,6 @@ alexaHandler.registerSessionEndedEventHandler= function(alexaApp) {
 };
 
 // LIBRARY EVENTS
-alexaHandler.registerHelpIntentHandler = function(alexaApp) {
-  alexaApp.intent("Hello", {
-      "slots": {},
-      "utterances": [
-        "Hello"
-      ]
-    }, function(request, response) {
-      response.shouldEndSession(false);
-      response.say("Hello world, it's me");
-    }
-  );
-};
-
 alexaHandler.registerRandomVerseIntentHandler = function(alexaApp) {
   alexaApp.intent("RandomVerse", {
       "slots": {
@@ -80,14 +69,11 @@ alexaHandler.registerRandomVerseIntentHandler = function(alexaApp) {
         'from {-|standardWorkID}'
       ]
     }, function(request, response) {
-      var standardWorkID = alexaHandler.library.getStandardWorkID(request.slot('StandardWorkName'));
-      return alexaHandler.library.getRandomVerse(standardWorkID).then(function(verse) {
-        console.log(verse);
-        response.shouldEndSession(false);
-        response.say(verse.reference.replace(":", ", verse ") + ' says:<break time="1s"/> ' + verse.text + ' <break time="1s"/>. Say \"next\" to hear another verse, or \"stop\" if you\'re all done.');
-      });
-    }
-  );
+      response.shouldEndSession(false);  
+      var standardWorkID = alexaHandler.library.getStandardWorkID(request.slot('StandardWorkName'), false, true);
+      var randomVerse = alexaHandler.library.getRandomVerse(standardWorkID);
+      response.say(readVerse(randomVerse) + '<break time="1s"/>' + alexaHandler.helpText);
+  });
 }
 
 alexaHandler.registerScriptureOfTheDayIntentHandler = function(alexaApp) {
@@ -99,11 +85,11 @@ alexaHandler.registerScriptureOfTheDayIntentHandler = function(alexaApp) {
         'from {-|standardWorkID}'
       ]
     }, function(request, response) {
+      response.shouldEndSession(false);  
       console.log('Processing ScriptureOfTheDay intent');
-      var standardWorkID = alexaHandler.library.getStandardWorkID(request.slot('StandardWorkName'));
-      response.shouldEndSession(false);
+      var standardWorkID = alexaHandler.library.getStandardWorkID(request.slot('StandardWorkName'), true, false);
       var verses = alexaHandler.scriptureOfTheDay.get(standardWorkID);
-      response.say(verses[0].reference.replace(":", ", verse ") + ' says:<break time="1s"/> ' + verses[0].text + ' <break time="1s"/>. Say \"next\" to hear another verse, or \"stop\" if you\'re all done.');
+      response.say(readVerses(verses) + '<break time="1s"/>' + alexaHandler.helpText);
     }
   );
 }
@@ -129,21 +115,30 @@ alexaHandler.registerReadScriptureIntentHandler = function(alexaApp) {
       }
     
       var verses = alexaHandler.library.getVerses(reference);
-      var text = '';
-      for (var verseIdx = 0; verseIdx < verses.length; verseIdx++) {
-        text += (verseIdx == 0 ? verses[0].reference.replace(":", ", verse ") : 'verse ' + (verseIdx + 1));
-        text += '<break time="1s"/>';
-        text += verses[verseIdx].text;
+      if (verses.length > 3) { 
+        response.say('Sorry, I can\'t read more than three verses at a time. Please try again with three verses or less.');
+      } else {
+        response.say(readVerses(verses) + '<break time="1s"/>' + alexaHandler.helpText);
       }
-      response.say(text);
     }
   );
 }
 
 module.exports = alexaHandler;
 
-function read(verse) {
-  var text = verse.text.replace('&', ' and ');
-  var reference = verse.reference.replace('D&C', 'Doctrine and Covenants').replace(":", ", verse ");
-  return reference + ' says:<break time="1s"/> ' + text + '<break time="1s"/>. Say \"next\" to hear another verse, or \"stop\" if you are done.';
+function readVerse(verse) {
+  return readVerses([ verse ]);
+}
+  
+function readVerses(verses) {
+  var text = '';
+  for (var verseIdx = 0; verseIdx < verses.length; verseIdx++) {
+    if (verseIdx > 0) {
+      text += '<break time="1s"/>';
+    }
+    text += (verseIdx == 0 ? verses[0].reference.replace(":", ", verse ") : 'verse ' + (verseIdx + 1));
+    text += '<break time="1s"/>';
+    text += verses[verseIdx].text;
+  }
+  return text;
 }
